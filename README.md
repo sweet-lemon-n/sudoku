@@ -61,7 +61,8 @@ prototype/    一次性 UI 原型（保留结论与截图，正式实现不引�
 
 推送到 `main` 后，`.github/workflows/deploy.yml` 跑测试、构建、发布到 GitHub Pages：
 
-<https://sweet-lemon-n.github.io/sudoku/>
+- 在线地址：<https://sweet-lemon-n.github.io/sudoku/>
+- 仓库：<https://github.com/sweet-lemon-n/sudoku>
 
 仓库公开，由 ADR 0004 决定；任何密钥都不要进入仓库。
 
