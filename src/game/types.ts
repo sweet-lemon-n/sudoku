@@ -43,7 +43,6 @@ export interface GameState {
   paused: boolean;
   won: boolean;
   undo: UndoSnapshot[];
-  lastPlaced: number | null;
   createdAt: number;
   updatedAt: number;
 }

@@ -63,7 +63,6 @@ describe('placing digits', () => {
     expect(game.errors[2]).toBe(0);
     expect(game.mistakes).toBe(0);
     expect(game.running).toBe(true);
-    expect(game.lastPlaced).toBe(2);
   });
 
   it('marks a wrong digit, counts the mistake and keeps it in the cell', () => {

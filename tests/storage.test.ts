@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -19,7 +19,7 @@ import {
   recordResult,
   type Result,
 } from '../src/storage/results';
-import { memoryStore } from '../src/storage/store';
+import { browserStore, memoryStore } from '../src/storage/store';
 import { createGame, place } from '../src/game/game';
 import { parseGrid } from '../src/engine/board';
 import { generatePuzzle } from '../src/engine/generator';
@@ -141,6 +141,35 @@ describe('save', () => {
   });
 });
 
+describe('browser storage fallback', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps reading and writing memory after quota fails', () => {
+    const data = new Map<string, string>();
+    let fail = false;
+    const fake = {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (fail) throw new Error('quota');
+        data.set(key, value);
+      },
+      removeItem: (key: string) => {
+        data.delete(key);
+      },
+    };
+    vi.stubGlobal('window', { localStorage: fake });
+    const store = browserStore();
+    store.setItem('sudoku:save:v1', 'old');
+    fail = true;
+    store.setItem('sudoku:save:v1', 'new');
+    expect(store.getItem('sudoku:save:v1')).toBe('new');
+    store.removeItem('sudoku:save:v1');
+    expect(store.getItem('sudoku:save:v1')).toBeNull();
+  });
+});
+
 describe('results', () => {
   const sample = (overrides: Partial<Result> = {}): Result => ({
     id: 'r1',
@@ -161,18 +190,20 @@ describe('results', () => {
     expect(results.map((result) => result.id)).toEqual(['b', 'a']);
   });
 
-  it('aggregates per difficulty', () => {
+  it('aggregates per difficulty, including reveals', () => {
     const store = memoryStore();
-    recordResult(store, sample({ id: 'a', timeSec: 100, mistakes: 0, finishedAt: 1 }));
-    recordResult(store, sample({ id: 'b', timeSec: 200, mistakes: 2, finishedAt: 2 }));
+    recordResult(store, sample({ id: 'a', timeSec: 100, mistakes: 0, reveals: 0, finishedAt: 1 }));
+    recordResult(store, sample({ id: 'b', timeSec: 200, mistakes: 2, reveals: 2, finishedAt: 2 }));
     recordResult(store, sample({ id: 'c', difficulty: 'hard', timeSec: 400, finishedAt: 3 }));
     const stats = aggregate(loadResults(store));
     expect(stats.easy.played).toBe(2);
     expect(stats.easy.bestTime).toBe(100);
     expect(stats.easy.averageTime).toBe(150);
     expect(stats.easy.averageMistakes).toBe(1);
+    expect(stats.easy.averageReveals).toBe(1);
     expect(stats.hard.played).toBe(1);
     expect(stats.medium.played).toBe(0);
+    expect(stats.medium.averageReveals).toBeNull();
   });
 
   it('drops corrupt entries but keeps good ones', () => {

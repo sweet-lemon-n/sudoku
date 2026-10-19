@@ -1,4 +1,4 @@
-import { bitOf, cellName, digitsOf } from '../engine/board';
+import { PEERS, bitOf, cellName, digitsOf } from '../engine/board';
 import { DIFFICULTY_LABEL, type Difficulty } from '../engine/solver';
 import {
   candidatesFor,
@@ -63,10 +63,6 @@ export class GameView {
 
     this.render();
     this.timer = window.setInterval(this.onInterval, 1000);
-  }
-
-  getState(): GameState {
-    return this.state;
   }
 
   destroy(): void {
@@ -268,8 +264,15 @@ export class GameView {
         const before = this.state;
         const next = requestHint(before);
         if (next === before) return;
+        const acted =
+          next.hints > before.hints ||
+          next.reveals > before.reveals ||
+          next.hint?.level !== before.hint?.level;
         this.commit(next, keyboard);
-        this.deps.feedback.note();
+        if (acted) {
+          if (next.won) this.deps.feedback.win();
+          else this.deps.feedback.note();
+        }
         return;
       }
       case 'pause':
@@ -301,7 +304,7 @@ export class GameView {
   private fillDigit(digit: number): void {
     const cell = this.state.selected;
     if (cell === null) {
-      this.deps.notify('先选一个格子，再填答案');
+      this.deps.notify('先选一个格子，再填数字');
       return;
     }
     const before = this.state;
@@ -328,12 +331,13 @@ export class GameView {
   private clearAllNotes(): void {
     const before = this.state;
     const next = clearNotes(before);
-    if (next === before || next.message?.startsWith('没有笔记')) {
+    if (next === before) {
       this.render();
       return;
     }
+    const noNotes = next.message?.startsWith('没有笔记') ?? false;
     this.commit(next, this.keyboardFocus);
-    this.deps.feedback.erase();
+    if (!noNotes) this.deps.feedback.erase();
   }
 
   private cancelPress(): void {
@@ -368,6 +372,7 @@ export class GameView {
             <div class="board" role="group" aria-label="数独盘面">${this.renderBoard()}</div>
           </div>
           ${this.renderHintBar()}
+          <p class="gesture-hint">轻点记笔记 · 长按填答案</p>
         </div>
         <div class="controls">
           <div class="bottom">
@@ -408,7 +413,7 @@ export class GameView {
       if (state.errors[cell] !== 0) classes.push('error');
       if (cell === selected) classes.push('selected');
       else if (selected !== null) {
-        if (isPeer(cell, selected)) classes.push('peer');
+        if (PEERS[cell]!.includes(selected)) classes.push('peer');
         if (selectedValue !== 0 && value === selectedValue) classes.push('same');
       }
       if (state.hint?.cell === cell) classes.push('hint-target');
@@ -481,7 +486,7 @@ export class GameView {
       if (hint.level === 1) {
         return `${cellName(hint.cell)}：先看高亮的格子 · 再点提示看原因`;
       }
-      return `${hint.explanation} · 再点提示揭示答案`;
+      return `${hint.explanation.replace(/。$/, '')} · 再点提示揭示`;
     }
     return this.state.message;
   }
@@ -493,14 +498,14 @@ export class GameView {
         <div class="sheet">
           <div class="sheet-icon">${icons.check}</div>
           <div class="sheet-kicker">完成</div>
-          <h2 class="sheet-title" id="win-title">这一局结束了</h2>
+          <h2 class="sheet-title" id="win-title">对局完成</h2>
           <div class="result-stats">
             <span>用时<b>${formatTime(state.elapsed)}</b></span>
             <span>错误<b>${state.mistakes}</b></span>
             <span>提示<b>${state.hints}</b></span>
             <span>揭示<b>${state.reveals}</b></span>
           </div>
-          <button type="button" class="primary-btn" data-action="again">再来一局</button>
+          <button type="button" class="primary-btn" data-action="again">新对局</button>
           <button type="button" class="ghost-btn" data-action="home">回到首页</button>
         </div>
       </div>`;
@@ -517,19 +522,6 @@ export class GameView {
     }
     return '';
   }
-}
-
-function isPeer(a: number, b: number): boolean {
-  if (a === b) return false;
-  const rowA = Math.floor(a / 9);
-  const rowB = Math.floor(b / 9);
-  const colA = a % 9;
-  const colB = b % 9;
-  return (
-    rowA === rowB ||
-    colA === colB ||
-    (Math.floor(rowA / 3) === Math.floor(rowB / 3) && Math.floor(colA / 3) === Math.floor(colB / 3))
-  );
 }
 
 function cellLabel(state: GameState, cell: number): string {

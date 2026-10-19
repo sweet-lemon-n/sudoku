@@ -1,4 +1,5 @@
-import { readJson, writeJson, type KeyValueStore } from './store';
+import { SETTINGS_KEY } from './keys';
+import { isRecord, readJson, writeJson, type KeyValueStore } from './store';
 
 export type ThemePreference = 'system' | 'night' | 'day';
 
@@ -16,10 +17,8 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
 };
 
-const KEY = 'sudoku:settings:v1';
-
 export function loadSettings(store: KeyValueStore): Settings {
-  const raw = readJson(store, KEY);
+  const raw = readJson(store, SETTINGS_KEY);
   if (!isRecord(raw)) return { ...DEFAULT_SETTINGS };
   return {
     theme:
@@ -33,9 +32,5 @@ export function loadSettings(store: KeyValueStore): Settings {
 }
 
 export function saveSettings(store: KeyValueStore, settings: Settings): void {
-  writeJson(store, KEY, settings);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  writeJson(store, SETTINGS_KEY, settings);
 }

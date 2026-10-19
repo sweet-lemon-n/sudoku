@@ -21,7 +21,7 @@ import { renderStats } from './ui/stats';
 import { applyTheme, watchSystemTheme } from './ui/theme';
 import { setupPwa } from './pwa';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = __APP_VERSION__;
 
 type Route = 'home' | 'game' | 'stats' | 'settings';
 
@@ -142,7 +142,7 @@ export class App {
       const state = this.gameState ?? loadSave(this.store);
       if (!state) {
         this.gameState = null;
-        this.navigate('home');
+        this.replaceWithHome();
         return;
       }
       this.gameState = state;
@@ -194,6 +194,12 @@ export class App {
         onSettings: () => this.navigate('settings'),
       }),
     );
+  }
+
+  /** 直接打开 #/play 但没有存档时，用 replace 回到首页，避免后退在两者之间打转。 */
+  private replaceWithHome(): void {
+    history.replaceState(null, '', `${location.pathname}${location.search}#/`);
+    this.render();
   }
 
   private continueGame(save: GameState | null): void {

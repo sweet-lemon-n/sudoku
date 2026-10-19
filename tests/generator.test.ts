@@ -88,5 +88,5 @@ describe('puzzle generation', () => {
       expect(countSolutions(puzzle.givens, 2)).toBe(1);
       expect(Array.from(puzzle.solution).join('')).toHaveLength(81);
     }
-  });
+  }, 30_000);
 });

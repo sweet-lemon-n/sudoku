@@ -3,6 +3,7 @@ import { generatePuzzle } from '../engine/generator';
 import { systemRng } from '../engine/rng';
 import type { Difficulty } from '../engine/solver';
 import type { Puzzle } from '../game/types';
+import { makeId } from '../util/id';
 import type { GenerateRequest, GenerateResponse } from './protocol';
 
 interface Pending {
@@ -107,13 +108,5 @@ export class GeneratorService {
         }
       }, 20);
     });
-  }
-}
-
-export function makeId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   }
 }

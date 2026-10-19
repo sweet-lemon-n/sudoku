@@ -1,15 +1,89 @@
 import type { Settings } from '../storage/settings';
 
-/** 震动与音效都尊重设置；音效默认关闭，首次手势后才创建 AudioContext。 */
-export class Feedback {
-  private audio: AudioContext | null = null;
+/** 震动/音效走适配器，套 Capacitor 壳时只替换这两个实现。 */
+export interface HapticsAdapter {
+  vibrate(pattern: number | number[]): void;
+}
 
-  constructor(private readonly readSettings: () => Settings) {}
+export interface Tone {
+  frequency: number;
+  duration: number;
+  type: OscillatorType;
+  volume: number;
+  delay?: number;
+}
+
+export interface AudioAdapter {
+  unlock(): void;
+  play(notes: Tone[]): void;
+}
+
+export function supportsHaptics(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+}
+
+export const browserHaptics: HapticsAdapter = {
+  vibrate(pattern) {
+    try {
+      if (typeof navigator.vibrate === 'function') navigator.vibrate(pattern);
+    } catch {
+      /* 桌面或 iOS 不支持震动时静默降级 */
+    }
+  },
+};
+
+/** 音效默认关闭；第一次手势后才创建 AudioContext。 */
+const browserAudio: AudioAdapter = (() => {
+  let context: AudioContext | null = null;
+
+  const ensure = (): AudioContext | null => {
+    if (context) return context;
+    try {
+      const Ctor = window.AudioContext;
+      if (!Ctor) return null;
+      context = new Ctor();
+      return context;
+    } catch {
+      return null;
+    }
+  };
+
+  return {
+    unlock() {
+      const audio = ensure();
+      if (audio && audio.state === 'suspended') void audio.resume();
+    },
+    play(notes) {
+      const audio = ensure();
+      if (!audio) return;
+      if (audio.state === 'suspended') void audio.resume();
+      const start = audio.currentTime + 0.01;
+      for (const note of notes) {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        const at = start + (note.delay ?? 0);
+        oscillator.type = note.type;
+        oscillator.frequency.setValueAtTime(note.frequency, at);
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(note.volume, at + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + note.duration);
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.start(at);
+        oscillator.stop(at + note.duration + 0.02);
+      }
+    },
+  };
+})();
+
+export class Feedback {
+  constructor(
+    private readonly readSettings: () => Settings,
+    private readonly haptics: HapticsAdapter = browserHaptics,
+    private readonly audio: AudioAdapter = browserAudio,
+  ) {}
 
   unlock(): void {
-    if (!this.readSettings().sound) return;
-    const audio = this.context();
-    if (audio && audio.state === 'suspended') void audio.resume();
+    if (this.readSettings().sound) this.audio.unlock();
   }
 
   correct(): void {
@@ -47,51 +121,11 @@ export class Feedback {
 
   private vibrate(pattern: number | number[]): void {
     if (!this.readSettings().haptics) return;
-    try {
-      if (typeof navigator.vibrate === 'function') navigator.vibrate(pattern);
-    } catch {
-      /* 桌面或 iOS 不支持震动时静默降级 */
-    }
+    this.haptics.vibrate(pattern);
   }
 
-  private tone(
-    notes: Array<{
-      frequency: number;
-      duration: number;
-      type: OscillatorType;
-      volume: number;
-      delay?: number;
-    }>,
-  ): void {
+  private tone(notes: Tone[]): void {
     if (!this.readSettings().sound) return;
-    const audio = this.context();
-    if (!audio) return;
-    if (audio.state === 'suspended') void audio.resume();
-    const start = audio.currentTime + 0.01;
-    for (const note of notes) {
-      const oscillator = audio.createOscillator();
-      const gain = audio.createGain();
-      const at = start + (note.delay ?? 0);
-      oscillator.type = note.type;
-      oscillator.frequency.setValueAtTime(note.frequency, at);
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(note.volume, at + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + note.duration);
-      oscillator.connect(gain).connect(audio.destination);
-      oscillator.start(at);
-      oscillator.stop(at + note.duration + 0.02);
-    }
-  }
-
-  private context(): AudioContext | null {
-    if (this.audio) return this.audio;
-    try {
-      const Ctor = window.AudioContext;
-      if (!Ctor) return null;
-      this.audio = new Ctor();
-      return this.audio;
-    } catch {
-      return null;
-    }
+    this.audio.play(notes);
   }
 }

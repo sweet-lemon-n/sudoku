@@ -1,4 +1,6 @@
 import { DIFFICULTIES, type Difficulty } from '../engine/solver';
+import { makeId } from '../util/id';
+import { RESULTS_KEY } from './keys';
 import { readJson, writeJson, type KeyValueStore } from './store';
 
 export interface Result {
@@ -17,6 +19,7 @@ export interface DifficultyStats {
   averageTime: number | null;
   averageMistakes: number | null;
   averageHints: number | null;
+  averageReveals: number | null;
 }
 
 export type Stats = Record<Difficulty, DifficultyStats>;
@@ -24,7 +27,6 @@ export type Stats = Record<Difficulty, DifficultyStats>;
 export type NewResult = Omit<Result, 'id' | 'finishedAt'> &
   Partial<Pick<Result, 'id' | 'finishedAt'>>;
 
-export const RESULTS_KEY = 'sudoku:results:v1';
 const LIMIT = 200;
 
 export function loadResults(store: KeyValueStore): Result[] {
@@ -66,6 +68,7 @@ export function aggregate(results: Result[]): Stats {
     slot.averageTime = (slot.averageTime ?? 0) + result.timeSec;
     slot.averageMistakes = (slot.averageMistakes ?? 0) + result.mistakes;
     slot.averageHints = (slot.averageHints ?? 0) + result.hints;
+    slot.averageReveals = (slot.averageReveals ?? 0) + result.reveals;
   }
   for (const difficulty of DIFFICULTIES) {
     const slot = stats[difficulty];
@@ -73,6 +76,7 @@ export function aggregate(results: Result[]): Stats {
     slot.averageTime = Math.round((slot.averageTime ?? 0) / slot.played);
     slot.averageMistakes = round1((slot.averageMistakes ?? 0) / slot.played);
     slot.averageHints = round1((slot.averageHints ?? 0) / slot.played);
+    slot.averageReveals = round1((slot.averageReveals ?? 0) / slot.played);
   }
   return stats;
 }
@@ -99,6 +103,7 @@ function emptySlot(): DifficultyStats {
     averageTime: null,
     averageMistakes: null,
     averageHints: null,
+    averageReveals: null,
   };
 }
 
@@ -125,12 +130,4 @@ function isCount(value: unknown): value is number {
 
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
-}
-
-function makeId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-  }
 }

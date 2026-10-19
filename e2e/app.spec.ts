@@ -42,6 +42,55 @@ test('第一次打开会先教手势，然后开始一局', async ({ page }) => 
   await expect(page.locator('.cell')).toHaveCount(81);
   await expect(page.locator('.key')).toHaveCount(9);
   await expect(page.locator('.chip-timer')).toHaveText('00:00');
+  await expect(page.locator('.gesture-hint')).toHaveText('轻点记笔记 · 长按填答案');
+});
+
+test('长按擦除清空全部笔记，撤销恢复', async ({ page }) => {
+  await seedSettings(page);
+  await startEasy(page);
+
+  const empties = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.cell')]
+      .map((cell, index) => ({ index, label: cell.getAttribute('aria-label') }))
+      .filter((cell) => cell.label?.includes('空'))
+      .slice(0, 2)
+      .map((cell) => cell.index),
+  );
+  expect(empties).toHaveLength(2);
+
+  for (const cell of empties) {
+    await page.locator(`.cell[data-cell="${cell}"]`).click();
+    const allowed = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.key:not(.blocked):not(.done)')].map((key) =>
+        Number(key.dataset.digit),
+      ),
+    );
+    expect(allowed.length).toBeGreaterThan(0);
+    await page.locator(`.key[data-digit="${allowed[0]}"]`).click();
+  }
+  const notes = await page.locator('.notes i.on').count();
+  expect(notes).toBeGreaterThanOrEqual(2);
+
+  const erase = page.locator('[data-action="erase"]');
+  const box = await erase.boundingBox();
+  if (!box) throw new Error('擦除按钮不可见');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.up();
+
+  await expect(page.locator('.hintbar')).toContainText('已清除全部笔记');
+  await expect(page.locator('.notes i.on')).toHaveCount(0);
+
+  // 再长按一次：没有笔记时应说明，而不是静默。
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.up();
+  await expect(page.locator('.hintbar')).toContainText('没有笔记可清除');
+
+  await page.locator('[data-action="undo"]').click();
+  await expect(page.locator('.notes i.on')).toHaveCount(notes);
 });
 
 test('轻点记笔记，长按填答案，撤销恢复', async ({ page }) => {
@@ -129,7 +178,7 @@ test('完成一局会写入记录并清掉存档', async ({ page }) => {
   }
 
   await expect(page.locator('.overlay')).toBeVisible();
-  await expect(page.locator('.sheet-title')).toHaveText('这一局结束了');
+  await expect(page.locator('.sheet-title')).toHaveText('对局完成');
   await expect(page.locator('.result-stats')).toContainText('错误');
   await expect(page.locator('.result-stats')).toContainText('揭示');
 
@@ -144,6 +193,8 @@ test('完成一局会写入记录并清掉存档', async ({ page }) => {
   await expect(page.locator('.continue-card')).toHaveCount(0);
   await page.getByRole('button', { name: '统计' }).click();
   await expect(page.locator('.result-row')).toHaveCount(1);
+  await expect(page.locator('.result-row').first()).toContainText('揭示');
+  await expect(page.locator('.stat-foot').first()).toContainText('平均揭示');
 });
 
 test('设置里切换主题并持久化，清除数据前会确认', async ({ page }) => {

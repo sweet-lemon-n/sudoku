@@ -18,7 +18,7 @@ const BLURB: Record<Difficulty, string> = {
   easy: '唯一余数 · 隐性唯一',
   medium: '会用到区块排除',
   hard: '需要数对',
-  expert: '四类技巧不够，需要试错',
+  expert: '基础技巧不够，需要试错',
 };
 
 export function renderHome(options: HomeOptions): HTMLElement {
@@ -74,7 +74,7 @@ export function renderHome(options: HomeOptions): HTMLElement {
       </div>
       <div class="home-guide-row">
         <span class="home-guide-icon">${icons.longpress}</span>
-        <span><strong>长按数字</strong>把答案填进选中的格子</span>
+        <span><strong>长按数字</strong>把数字填进选中的格子</span>
       </div>
       <div class="home-guide-row">
         <span class="home-guide-icon">${icons.erase}</span>

@@ -8,11 +8,12 @@ export interface PwaCallbacks {
 /** 注册 Service Worker；只有新版本就绪时才打扰玩家。 */
 export function setupPwa(callbacks: PwaCallbacks): void {
   try {
+    let applyUpdate: ((reloadPage?: boolean) => Promise<void>) | null = null;
     const update = registerSW({
       immediate: true,
       onNeedRefresh() {
         callbacks.onUpdateReady(() => {
-          void update(true);
+          void applyUpdate?.(true);
         });
       },
       onOfflineReady() {
@@ -27,6 +28,7 @@ export function setupPwa(callbacks: PwaCallbacks): void {
         document.addEventListener('visibilitychange', check);
       },
     });
+    applyUpdate = update;
   } catch {
     /* 开发模式或浏览器禁用 Service Worker：游戏本身照常运行 */
   }

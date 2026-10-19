@@ -13,6 +13,7 @@ body {
   background-color: var(--page-bg);
   background-image: var(--page-bg-image);
   background-attachment: fixed;
+  overscroll-behavior-y: none;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -365,7 +366,7 @@ html[data-theme="day"] {
   display: grid;
   place-items: center;
   font-style: normal;
-  font-size: 2.4cqw;
+  font-size: max(6px, 2.7cqw);
   line-height: 1;
   visibility: hidden;
   color: var(--notes);
@@ -383,6 +384,15 @@ html[data-theme="day"] {
   color: var(--hint-ink);
   font-size: 11.5px;
   line-height: 1.5;
+}
+
+.gesture-hint {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--muted);
+  user-select: none;
 }
 
 .controls { padding-top: 12px; flex: none; }
@@ -683,6 +693,20 @@ html[data-theme="day"] {
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; margin-top: 12px; }
 .stat-grid dt { font-size: 9px; color: var(--muted); letter-spacing: .06em; }
 .stat-grid dd { margin-top: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.stat-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--separator);
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.stat-foot b { font-size: 12px; font-weight: 600; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
 .stats-recent { display: flex; flex-direction: column; gap: 10px; }
 

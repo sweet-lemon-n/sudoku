@@ -33,7 +33,7 @@ export function showOnboarding(options: OnboardingOptions): () => void {
         </li>
       </ul>
       <button type="button" class="primary-btn" data-start>${options.replay ? '知道了' : '开始'}</button>
-      <p class="onboarding-foot">提示会分三步：先高亮相关格，再解释技巧，最后才揭示答案。电脑上也可用 1–9 记笔记、Shift+1–9 填答案。</p>
+      <p class="onboarding-foot">提示会分三步：先高亮相关格，再解释技巧，最后才揭示一格。电脑上也可用 1–9 记笔记、Shift+1–9 填数字。</p>
     </div>
   `;
 

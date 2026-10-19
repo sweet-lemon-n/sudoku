@@ -83,6 +83,11 @@ export function parseGrid(text: string): Uint8Array | null {
   return grid;
 }
 
+export function gridsEqual(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
+  for (let cell = 0; cell < CELL_COUNT; cell++) if (a[cell] !== b[cell]) return false;
+  return true;
+}
+
 /** 把盘面写回 81 位文本，用于存档。 */
 export function formatGrid(grid: ArrayLike<number>): string {
   let text = '';

@@ -1,6 +1,6 @@
 /** 对局状态机：纯函数，不碰 DOM，也不依赖存储。 */
 
-import { ALL_DIGITS, PEERS, bitOf, cellName, digitsOf, popcount } from '../engine/board';
+import { ALL_DIGITS, PEERS, bitOf, cellName, gridsEqual, popcount } from '../engine/board';
 import { findHint } from '../engine/solver';
 import type { GameState, HintState, Puzzle, UndoSnapshot } from './types';
 
@@ -28,7 +28,6 @@ export function createGame(puzzle: Puzzle, now = Date.now()): GameState {
     paused: false,
     won: false,
     undo: [],
-    lastPlaced: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -53,7 +52,6 @@ export function place(state: GameState, cell: number, digit: number): GameState 
   next.values[cell] = digit;
   next.notes[cell] = 0;
   next.errors[cell] = 0;
-  next.lastPlaced = cell;
   next.running = true;
   next.hint = null;
   next.selected = cell;
@@ -67,7 +65,7 @@ export function place(state: GameState, cell: number, digit: number): GameState 
     next.message = `${cellName(cell)} 的 ${digit} 不对，已标红`;
   }
 
-  if (isSolved(next.values, next.solution)) {
+  if (gridsEqual(next.values, next.solution)) {
     next.won = true;
     next.running = false;
     next.paused = false;
@@ -155,6 +153,7 @@ export function undo(state: GameState): GameState {
 
 export function requestHint(state: GameState): GameState {
   if (state.won || state.paused) return state;
+  // 错值会让候选数推理建立在错误前提上；先修正再提示，沿用原型交互。
   if (hasErrors(state)) return withMessage(state, '先修正标红的格子，再要提示');
 
   if (state.hint) {
@@ -239,16 +238,11 @@ export function remainingOf(state: GameState, digit: number): number {
   return Math.max(0, 9 - placed);
 }
 
-export function notesOf(state: GameState, cell: number): number[] {
-  return digitsOf(state.notes[cell]!);
-}
-
 function reveal(state: GameState, hint: HintState): GameState {
   const next = withUndo(state);
   next.values[hint.cell] = hint.digit;
   next.notes[hint.cell] = 0;
   next.errors[hint.cell] = 0;
-  next.lastPlaced = hint.cell;
   next.selected = hint.cell;
   next.reveals += 1;
   next.hint = null;
@@ -256,7 +250,7 @@ function reveal(state: GameState, hint: HintState): GameState {
   next.message = `已揭示：${cellName(hint.cell)} = ${hint.digit}`;
   clearPeerNotes(next, hint.cell, hint.digit);
 
-  if (isSolved(next.values, next.solution)) {
+  if (gridsEqual(next.values, next.solution)) {
     next.won = true;
     next.running = false;
     next.paused = false;
@@ -293,13 +287,6 @@ function clearPeerNotes(state: GameState, cell: number, digit: number): void {
 function hasErrors(state: GameState): boolean {
   for (let cell = 0; cell < 81; cell++) if (state.errors[cell] !== 0) return true;
   return false;
-}
-
-function isSolved(values: ArrayLike<number>, solution: ArrayLike<number>): boolean {
-  for (let cell = 0; cell < 81; cell++) {
-    if (values[cell] !== solution[cell]) return false;
-  }
-  return true;
 }
 
 function withMessage(state: GameState, message: string): GameState {

@@ -90,6 +90,35 @@ export interface GradeResult extends LogicResult {
   solution: Uint8Array;
 }
 
+interface BestCell {
+  cell: number;
+  mask: number;
+}
+
+/** MRV：找候选最少的一个空格；没有空格返回 null，遇到死格返回 mask=0。 */
+function findBestCell(
+  grid: Uint8Array,
+  rowMask: Uint16Array,
+  colMask: Uint16Array,
+  boxMask: Uint16Array,
+): BestCell | null {
+  let best: BestCell | null = null;
+  let bestCount = 10;
+  for (let cell = 0; cell < CELL_COUNT; cell++) {
+    if (grid[cell] !== 0) continue;
+    const mask =
+      ALL_DIGITS & ~(rowMask[rowOf(cell)]! | colMask[colOf(cell)]! | boxMask[boxOf(cell)]!);
+    const count = popcount(mask);
+    if (count === 0) return { cell, mask: 0 };
+    if (count < bestCount) {
+      best = { cell, mask };
+      bestCount = count;
+      if (count === 1) break;
+    }
+  }
+  return best;
+}
+
 /** 解的数量，最多数到 limit 个。空盘、多解盘会很快返回。 */
 export function countSolutions(values: ArrayLike<number>, limit = 2): number {
   if (limit < 1) return 0;
@@ -116,45 +145,28 @@ export function countSolutions(values: ArrayLike<number>, limit = 2): number {
   let found = 0;
 
   const search = (): void => {
-    let bestCell = -1;
-    let bestMask = 0;
-    let bestCount = 10;
-
-    for (let cell = 0; cell < CELL_COUNT; cell++) {
-      if (grid[cell] !== 0) continue;
-      const mask =
-        ALL_DIGITS &
-        ~(rowMask[rowOf(cell)]! | colMask[colOf(cell)]! | boxMask[boxOf(cell)]!);
-      const count = popcount(mask);
-      if (count === 0) return;
-      if (count < bestCount) {
-        bestCount = count;
-        bestCell = cell;
-        bestMask = mask;
-        if (count === 1) break;
-      }
-    }
-
-    if (bestCell === -1) {
+    const best = findBestCell(grid, rowMask, colMask, boxMask);
+    if (!best) {
       found++;
       return;
     }
+    if (best.mask === 0) return;
 
-    const row = rowOf(bestCell);
-    const col = colOf(bestCell);
-    const box = boxOf(bestCell);
-    let mask = bestMask;
+    const row = rowOf(best.cell);
+    const col = colOf(best.cell);
+    const box = boxOf(best.cell);
+    let mask = best.mask;
     while (mask && found < limit) {
       const bit = mask & -mask;
       mask ^= bit;
-      grid[bestCell] = bitToDigit(bit);
+      grid[best.cell] = bitToDigit(bit);
       rowMask[row]! |= bit;
       colMask[col]! |= bit;
       boxMask[box]! |= bit;
 
       search();
 
-      grid[bestCell] = 0;
+      grid[best.cell] = 0;
       rowMask[row]! &= ~bit;
       colMask[col]! &= ~bit;
       boxMask[box]! &= ~bit;
@@ -165,7 +177,7 @@ export function countSolutions(values: ArrayLike<number>, limit = 2): number {
   return found;
 }
 
-/** 找出一个解；无解返回 null。用于校验与生成答案。 */
+/** 找出一个解；无解返回 null。用于校验与生成终局。 */
 export function solve(values: ArrayLike<number>): Uint8Array | null {
   let result: Uint8Array | null = null;
   const grid = new Uint8Array(CELL_COUNT);
@@ -187,40 +199,25 @@ export function solve(values: ArrayLike<number>): Uint8Array | null {
   }
 
   const search = (): boolean => {
-    let bestCell = -1;
-    let bestMask = 0;
-    let bestCount = 10;
-    for (let cell = 0; cell < CELL_COUNT; cell++) {
-      if (grid[cell] !== 0) continue;
-      const mask =
-        ALL_DIGITS &
-        ~(rowMask[rowOf(cell)]! | colMask[colOf(cell)]! | boxMask[boxOf(cell)]!);
-      const count = popcount(mask);
-      if (count === 0) return false;
-      if (count < bestCount) {
-        bestCount = count;
-        bestCell = cell;
-        bestMask = mask;
-        if (count === 1) break;
-      }
-    }
-    if (bestCell === -1) {
+    const best = findBestCell(grid, rowMask, colMask, boxMask);
+    if (!best) {
       result = grid.slice();
       return true;
     }
-    let mask = bestMask;
+    if (best.mask === 0) return false;
+    let mask = best.mask;
     while (mask) {
       const bit = mask & -mask;
       mask ^= bit;
-      grid[bestCell] = bitToDigit(bit);
-      rowMask[rowOf(bestCell)]! |= bit;
-      colMask[colOf(bestCell)]! |= bit;
-      boxMask[boxOf(bestCell)]! |= bit;
+      grid[best.cell] = bitToDigit(bit);
+      rowMask[rowOf(best.cell)]! |= bit;
+      colMask[colOf(best.cell)]! |= bit;
+      boxMask[boxOf(best.cell)]! |= bit;
       if (search()) return true;
-      grid[bestCell] = 0;
-      rowMask[rowOf(bestCell)]! &= ~bit;
-      colMask[colOf(bestCell)]! &= ~bit;
-      boxMask[boxOf(bestCell)]! &= ~bit;
+      grid[best.cell] = 0;
+      rowMask[rowOf(best.cell)]! &= ~bit;
+      colMask[colOf(best.cell)]! &= ~bit;
+      boxMask[boxOf(best.cell)]! &= ~bit;
     }
     return false;
   };
@@ -242,36 +239,22 @@ function solveRandomized(rng: Rng): Uint8Array | null {
   const boxMask = new Uint16Array(9);
 
   const search = (): boolean => {
-    let bestCell = -1;
-    let bestMask = 0;
-    let bestCount = 10;
-    for (let cell = 0; cell < CELL_COUNT; cell++) {
-      if (grid[cell] !== 0) continue;
-      const mask =
-        ALL_DIGITS &
-        ~(rowMask[rowOf(cell)]! | colMask[colOf(cell)]! | boxMask[boxOf(cell)]!);
-      const count = popcount(mask);
-      if (count === 0) return false;
-      if (count < bestCount) {
-        bestCount = count;
-        bestCell = cell;
-        bestMask = mask;
-      }
-    }
-    if (bestCell === -1) return true;
-    const digits = digitsOf(bestMask);
+    const best = findBestCell(grid, rowMask, colMask, boxMask);
+    if (!best) return true;
+    if (best.mask === 0) return false;
+    const digits = digitsOf(best.mask);
     rng.shuffle(digits);
     for (const digit of digits) {
       const bit = bitOf(digit);
-      grid[bestCell] = digit;
-      rowMask[rowOf(bestCell)]! |= bit;
-      colMask[colOf(bestCell)]! |= bit;
-      boxMask[boxOf(bestCell)]! |= bit;
+      grid[best.cell] = digit;
+      rowMask[rowOf(best.cell)]! |= bit;
+      colMask[colOf(best.cell)]! |= bit;
+      boxMask[boxOf(best.cell)]! |= bit;
       if (search()) return true;
-      grid[bestCell] = 0;
-      rowMask[rowOf(bestCell)]! &= ~bit;
-      colMask[colOf(bestCell)]! &= ~bit;
-      boxMask[boxOf(bestCell)]! &= ~bit;
+      grid[best.cell] = 0;
+      rowMask[rowOf(best.cell)]! &= ~bit;
+      colMask[colOf(best.cell)]! &= ~bit;
+      boxMask[boxOf(best.cell)]! &= ~bit;
     }
     return false;
   };
@@ -280,7 +263,7 @@ function solveRandomized(rng: Rng): Uint8Array | null {
 }
 
 /**
- * 只用四类技巧推进盘面，记录最高技巧等级。
+ * 只用基础技巧（唯一余数、隐性唯一、区块排除、数对）推进盘面，记录最高技巧等级。
  * 无法推进时 stalled=true（唯一解时即为“专家”）。
  */
 export function solveLogically(values: ArrayLike<number>): LogicResult {

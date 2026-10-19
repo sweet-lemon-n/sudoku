@@ -1,4 +1,5 @@
 import type { Settings, ThemePreference } from '../storage/settings';
+import { supportsHaptics } from './feedback';
 import { icons } from './icons';
 
 export interface SettingsOptions {
@@ -20,7 +21,7 @@ export function renderSettings(options: SettingsOptions): HTMLElement {
   const root = document.createElement('div');
   root.className = 'page sub-page settings-page';
   const settings = { ...options.settings };
-  const canVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+  const canVibrate = supportsHaptics();
 
   root.innerHTML = `
     <header class="sub-top">
@@ -77,7 +78,7 @@ export function renderSettings(options: SettingsOptions): HTMLElement {
         <button type="button" class="setting-row setting-link" data-guide>
           <div class="setting-label">
             <strong>手势说明</strong>
-            <span>轻点记笔记，长按填答案</span>
+            <span>轻点记笔记，长按填数字</span>
           </div>
           <span class="setting-arrow">${icons.arrow}</span>
         </button>

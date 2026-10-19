@@ -1,10 +1,10 @@
-import { formatGrid, parseGrid } from '../engine/board';
+import { formatGrid, gridsEqual, parseGrid } from '../engine/board';
 import { countSolutions, solve, type Difficulty } from '../engine/solver';
 import { DIFFICULTIES } from '../engine/solver';
 import type { GameState, UndoSnapshot } from '../game/types';
-import { type KeyValueStore } from './store';
+import { SAVE_KEY } from './keys';
+import { isRecord, type KeyValueStore } from './store';
 
-export const SAVE_KEY = 'sudoku:save:v1';
 const VERSION = 1;
 
 interface SerializedUndo {
@@ -144,7 +144,6 @@ export function deserializeGame(raw: string): GameState | null {
     paused: parsed.paused,
     won: false,
     undo,
-    lastPlaced: null,
     createdAt,
     updatedAt,
   };
@@ -226,11 +225,6 @@ function isCompleteSolution(solution: Uint8Array): boolean {
   return countSolutions(solution, 2) === 1;
 }
 
-function gridsEqual(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
-  for (let cell = 0; cell < 81; cell++) if (a[cell] !== b[cell]) return false;
-  return true;
-}
-
 function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === 'string' && (DIFFICULTIES as readonly string[]).includes(value);
 }
@@ -243,8 +237,4 @@ function asCount(value: unknown): number | null {
 
 function asTimestamp(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

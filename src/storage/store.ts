@@ -26,25 +26,39 @@ export function browserStore(): KeyValueStore {
     const probe = 'sudoku:probe';
     storage.setItem(probe, '1');
     storage.removeItem(probe);
+    let useFallback = false;
     return {
       getItem: (key) => {
+        if (useFallback) return fallback.getItem(key);
         try {
           return storage.getItem(key);
         } catch {
+          useFallback = true;
           return fallback.getItem(key);
         }
       },
       setItem: (key, value) => {
+        if (useFallback) {
+          fallback.setItem(key, value);
+          return;
+        }
         try {
           storage.setItem(key, value);
         } catch {
+          // 配额已满或被禁用：从这里开始整局都走内存，避免读回 localStorage 的旧值。
+          useFallback = true;
           fallback.setItem(key, value);
         }
       },
       removeItem: (key) => {
+        if (useFallback) {
+          fallback.removeItem(key);
+          return;
+        }
         try {
           storage.removeItem(key);
         } catch {
+          useFallback = true;
           fallback.removeItem(key);
         }
       },
@@ -52,6 +66,10 @@ export function browserStore(): KeyValueStore {
   } catch {
     return fallback;
   }
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function readJson(store: KeyValueStore, key: string): unknown {

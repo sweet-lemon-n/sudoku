@@ -1,4 +1,5 @@
 import type { ThemePreference } from '../storage/settings';
+import { THEME_COLORS } from './theme-colors';
 
 export type ResolvedTheme = 'night' | 'day';
 
@@ -15,7 +16,7 @@ export function applyTheme(preference: ThemePreference): ResolvedTheme {
   const theme = resolveTheme(preference);
   document.documentElement.dataset.theme = theme;
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (meta) meta.content = theme === 'day' ? '#f4f6f9' : '#06080f';
+  if (meta) meta.content = THEME_COLORS[theme];
   return theme;
 }
 

@@ -19,7 +19,7 @@ export function renderStats(options: StatsOptions): HTMLElement {
     return `<article class="stat-card">
       <header>
         <span class="stat-name">${DIFFICULTY_LABEL[difficulty]}</span>
-        <span class="stat-played">${slot.played} 局</span>
+        <span class="stat-played">${slot.played} 次</span>
       </header>
       <dl class="stat-grid">
         <div><dt>最佳</dt><dd>${slot.bestTime === null ? '—' : formatTime(slot.bestTime)}</dd></div>
@@ -27,6 +27,7 @@ export function renderStats(options: StatsOptions): HTMLElement {
         <div><dt>平均错误</dt><dd>${slot.averageMistakes === null ? '—' : slot.averageMistakes}</dd></div>
         <div><dt>平均提示</dt><dd>${slot.averageHints === null ? '—' : slot.averageHints}</dd></div>
       </dl>
+      <div class="stat-foot"><span>平均揭示</span><b>${slot.averageReveals === null ? '—' : slot.averageReveals}</b></div>
     </article>`;
   }).join('');
 
@@ -41,7 +42,7 @@ export function renderStats(options: StatsOptions): HTMLElement {
             </span>
             <span class="result-numbers">
               <b>${formatTime(result.timeSec)}</b>
-              <span>错误 ${result.mistakes} · 提示 ${result.hints}</span>
+              <span>错误 ${result.mistakes} · 提示 ${result.hints}${result.reveals > 0 ? ` · 揭示 ${result.reveals}` : ''}</span>
             </span>
           </li>`,
         )
@@ -49,14 +50,14 @@ export function renderStats(options: StatsOptions): HTMLElement {
     : `<div class="empty-state">
         <div class="empty-icon">${icons.chart}</div>
         <p>还没有完成记录</p>
-        <span>完成一局后，用时会留在这里。</span>
+        <span>完成一次对局后，用时会留在这里。</span>
       </div>`;
 
   root.innerHTML = `
     <header class="sub-top">
       <button type="button" class="icon-btn" data-back aria-label="返回" title="返回">${icons.back}</button>
       <h1>统计</h1>
-      <span class="sub-top-note">${total} 局</span>
+      <span class="sub-top-note">${total} 次完成</span>
     </header>
     <section class="stats-cards">${cards}</section>
     <section class="stats-recent">

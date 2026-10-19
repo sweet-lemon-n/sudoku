@@ -7,11 +7,18 @@ import {
   solveLogically,
 } from '../src/engine/solver';
 import { parseGrid } from '../src/engine/board';
+import { generatePuzzle } from '../src/engine/generator';
+import { mulberry32 } from '../src/engine/rng';
 
 const CLASSIC =
   '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
 const CLASSIC_SOLUTION =
   '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+// 26 个已知数、唯一解，四类技巧推进到 64 格后卡住（专家）。
+const EXPERT_GIVENS =
+  '480000000530020107007000806000000008000049005702001004000006000900070500000038021';
+const EXPERT_SOLUTION =
+  '489617352536824197217395846154263978863749215792581634321456789948172563675938421';
 
 describe('solution counting', () => {
   it('finds exactly one solution for a well-formed puzzle', () => {
@@ -109,9 +116,7 @@ describe('technique detection', () => {
     expect(hint?.explanation).toContain('隐性唯一');
   });
 
-  it('never suggests a digit other than the solution', async () => {
-    const { generatePuzzle } = await import('../src/engine/generator');
-    const { mulberry32 } = await import('../src/engine/rng');
+  it('never suggests a digit other than the solution', () => {
     for (const difficulty of ['easy', 'medium', 'hard', 'expert'] as const) {
       const puzzle = generatePuzzle(difficulty, mulberry32(31));
       const values = puzzle.givens.slice();
@@ -124,5 +129,17 @@ describe('technique detection', () => {
       }
       expect(values.every((value) => value !== 0)).toBe(true);
     }
+  }, 30_000);
+
+  it('degrades to a trial hint when the four techniques stall', () => {
+    const givens = parseGrid(EXPERT_GIVENS)!;
+    const solution = parseGrid(EXPERT_SOLUTION)!;
+    const stalled = solveLogically(givens);
+    expect(stalled.stalled).toBe(true);
+
+    const trial = findHint(stalled.grid, solution);
+    expect(trial?.technique).toBe('trial');
+    expect(trial?.digit).toBe(solution[trial!.cell]);
+    expect(trial?.explanation).toContain('试错');
   });
 });
