@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="data:,">
+  <title>数独 · 原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-night">
+  <script>
+    // 首帧前定主题，避免系统浅色时闪一下夜色。
+    (function () {
+      try {
+        var p = new URLSearchParams(location.search);
+        var t = p.get('theme');
+        if (t !== 'night' && t !== 'day') t = null;
+        if (!t) {
+          try { t = localStorage.getItem('sudoku-theme'); } catch (e) {}
+        }
+        if (t !== 'night' && t !== 'day') {
+          t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'night' : 'day';
+        }
+        document.body.className = 'theme-' + t;
+      } catch (e) {}
+    })();
+  </script>
+
+  <main id="app"></main>
+
+  <nav class="switcher" aria-label="主题切换">
+    <span class="proto-tag">PROTOTYPE</span>
+    <div class="theme-btns">
+      <button type="button" class="theme-btn active" data-theme="night" aria-pressed="true">夜色</button>
+      <button type="button" class="theme-btn" data-theme="day" aria-pressed="false">日间</button>
+    </div>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
